@@ -13,7 +13,7 @@ MAX_FPS = 15
 IMAGES = {}
 
 # AI vs Human settings
-SET_WHITE_AS_BOT = True  # Set True if AI plays as white
+SET_WHITE_AS_BOT = False  # Set True if AI plays as white
 SET_BLACK_AS_BOT = False  # Set True if AI plays as black
 
 # Colors for the chessboard
