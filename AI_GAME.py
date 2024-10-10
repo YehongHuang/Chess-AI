@@ -14,7 +14,7 @@ IMAGES = {}
 
 # AI vs Human settings
 SET_WHITE_AS_BOT = False  # Set True if AI plays as white
-SET_BLACK_AS_BOT = False  # Set True if AI plays as black
+SET_BLACK_AS_BOT = True  # Set True if AI plays as black
 
 # Colors for the chessboard
 LIGHT_SQUARE_COLOR = (240, 217, 181)
