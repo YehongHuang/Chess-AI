@@ -63,7 +63,7 @@ class Generator(nn.Module):
         x = self.act2(x)
 
         # Flatten the output of the convolution layer
-        x = x.view(x.size(0), -1)
+        x = x.reshape(x.size(0), -1)
 
         # Concatenate the flattened features with noise
         x = torch.cat((x, noise), dim=1)
