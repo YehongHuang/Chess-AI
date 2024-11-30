@@ -2,6 +2,7 @@ import sys
 import pygame as p
 import chess
 import torch
+import time
 from helpers.conversion import board_to_matrix, az_index_to_move, move_to_az_index
 from models.ccgan import load_models
 
@@ -14,7 +15,7 @@ IMAGES = {}
 
 # AI vs Human settings
 SET_WHITE_AS_BOT = False  # Set True if AI plays as white
-SET_BLACK_AS_BOT = False  # Set True if AI plays as black
+SET_BLACK_AS_BOT = True  # Set True if AI plays as black
 
 # Colors for the chessboard
 LIGHT_SQUARE_COLOR = (240, 217, 181)
@@ -27,6 +28,11 @@ def loadImages():
         image_path = "images1/" + piece + ".png"
         original_image = p.image.load(image_path)
         IMAGES[piece] = p.transform.smoothscale(original_image, (SQ_SIZE, SQ_SIZE))
+    AI_Player_Options = ['0', 'W', 'B', 'WB']
+    for option in AI_Player_Options:
+        image_path = "images2/" + option + ".png"
+        original_image = p.image.load(image_path)
+        IMAGES[option] = p.transform.smoothscale(original_image, (SQ_SIZE, SQ_SIZE))
 
 # Simplified board drawing function
 def drawBoard(screen, board):
@@ -44,6 +50,64 @@ def drawBoard(screen, board):
                 # Draw pieces with reversed row order
                 screen.blit(IMAGES[piece_image_key], p.Rect(col * SQ_SIZE, (DIMENSION - row - 1) * SQ_SIZE, SQ_SIZE, SQ_SIZE))
 
+#Function to allow players to choose which color will be controlled by AI
+def choose_AI_player_UI(screen):
+    # Create a semi-transparent overlay
+    overlay = p.Surface((BOARD_WIDTH, BOARD_HEIGHT), p.SRCALPHA)
+    overlay.fill((0, 0, 0, 128))  # Semi-transparent black overlay
+    screen.blit(overlay, (0, 0))
+
+    option_rects = []
+
+    #Draw options
+    options = ['0', 'W', 'B', 'WB']
+    option_size = SQ_SIZE
+    total_width = option_size * len(options)
+    start_x = (BOARD_WIDTH - total_width) // 2
+    y = (BOARD_HEIGHT - option_size) // 2
+
+    for i, option_image in enumerate (options):
+        x = start_x + i * option_size
+        screen.blit(IMAGES[option_image], p.Rect(x, y, option_size, option_size))
+        option_rects.append(p.Rect(x, y, option_size, option_size))
+
+        p.display.flip()
+
+        # Wait for user to click
+    while True:
+        for e in p.event.get():
+            if e.type == p.MOUSEBUTTONDOWN:
+                pos = p.mouse.get_pos()
+                for i, rect in enumerate(option_rects):
+                    if rect.collidepoint(pos):
+                        print(f"Player selected AI Players {options[i]}")
+                        choose_AI_player(i)
+                        return
+            if e.type == p.QUIT:
+                p.quit()
+                sys.exit()
+# Extension of above function
+def choose_AI_player(option_number):
+    global SET_WHITE_AS_BOT
+    global SET_BLACK_AS_BOT
+    if option_number == 0:
+        SET_WHITE_AS_BOT = False
+        SET_BLACK_AS_BOT = False
+        return
+    elif option_number == 1:
+        SET_WHITE_AS_BOT = True
+        SET_BLACK_AS_BOT = False
+        return
+    elif option_number == 2:
+        SET_WHITE_AS_BOT = False
+        SET_BLACK_AS_BOT = True
+        return
+    elif option_number == 3:
+        SET_WHITE_AS_BOT = True
+        SET_BLACK_AS_BOT = True
+        return
+        
+
 # Function to handle pawn promotion
 def handle_pawn_promotion(gs, move, screen):
     piece = gs.piece_at(move.from_square)
@@ -53,7 +117,6 @@ def handle_pawn_promotion(gs, move, screen):
             promotion_piece = show_promotion_popup(screen, gs)
             return chess.Move(move.from_square, move.to_square, promotion=promotion_piece)
     return move
-
 # Display a promotion popup for selecting the piece type
 def show_promotion_popup(screen, gs):
     print("Showing promotion popup...")
@@ -214,6 +277,8 @@ def main():
     # Initialize game state
     gs = chess.Board()
 
+    choose_AI_player_UI(screen)
+
     validMoves = list(gs.legal_moves)
 
     moveMade = False
@@ -261,6 +326,7 @@ def main():
 
         # AI move handling
         if not humanTurn and not gameOver:
+            time.sleep(0.1)
             if (gs.turn and SET_WHITE_AS_BOT) or (not gs.turn and SET_BLACK_AS_BOT):
                 move = get_ai_move(generator, gs)
                 gs.push(move)

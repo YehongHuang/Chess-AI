@@ -7,22 +7,31 @@ import numpy as np
 import itertools
 from models.ccgan import Generator, Discriminator, create_ccgan, train_ccgan, get_saver
 from helpers.conversion import AZ_MOVE_COUNT
+
+# set device to gpu if available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # File name prefix for logging / saving
 run_name = "new model"
 
 # Get networks
 generator, discriminator, generator_optimizer, discriminator_optimizer = create_ccgan()
+
+# move model to gpu
+generator = generator.to(device)
+discriminator = discriminator.to(device)
+
 print(generator)
 print(discriminator)
 
 # Training parameters
-epochs = 25
+epochs = 1000
 batch_size = 100
 train_samples = 750
-shuffle_buffer = 150
+shuffle_buffer = 200
 n_th_epochs = 10
 save_generated = True  # Should the nth epoch's final batch's generated moves be saved?
-step_per_epochs = 25
+step_per_epochs = 80
 
 # Custom Dataset class
 class ChessDataset(Dataset):
@@ -46,6 +55,7 @@ class ChessDataset(Dataset):
         return len(self.boards)
 
     def __getitem__(self, idx):
+        
         board = np.array(self.boards[idx], dtype=np.float32).reshape(12, 8, 8)  # (12, 8, 8) shape for the board
         move = np.array(self.moves[idx], dtype=np.float32)
 
@@ -64,12 +74,20 @@ moves_path = "preprocessed_games/2500__moves__standard_2023_human_morethan10.mpk
 dataset = ChessDataset(boards_path, moves_path)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-print ()
-# Train the GAN
 print("Beginning training")
 
-history = train_ccgan(dataloader, generator, discriminator, generator_optimizer, discriminator_optimizer, epochs,step_per_epochs,
-                     n_th_epochs, save_models_fn=get_saver("saved_models__%s/" % run_name) if save_generated else None)
+# Train the GAN
+history = train_ccgan(
+    dataloader, 
+    generator, 
+    discriminator, 
+    generator_optimizer, 
+    discriminator_optimizer, 
+    epochs, 
+    step_per_epochs, 
+    n_th_epochs, 
+    save_models_fn=get_saver("saved_models__%s/" % run_name) if save_generated else None
+)
 
 print("Training ended")
 
@@ -88,4 +106,3 @@ with open("RunHistoryData__%s.csv" % run_name, 'a+') as history_csv:
     history_csv.write("Discriminator Loss,Discriminator Accuracy,Generator Loss\n")
     for d_loss, d_acc, g_loss, _ in history:
         history_csv.write("%s,%s,%s\n" % (d_loss, d_acc, g_loss))
-

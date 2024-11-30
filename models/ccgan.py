@@ -63,7 +63,7 @@ class Generator(nn.Module):
         x = self.act2(x)
 
         # Flatten the output of the convolution layer
-        x = x.view(x.size(0), -1)
+        x = x.reshape(x.size(0), -1)
 
         # Concatenate the flattened features with noise
         x = torch.cat((x, noise), dim=1)
@@ -138,6 +138,7 @@ def create_ccgan():
 def train_ccgan(dataloader, generator, discriminator, generator_optimizer, discriminator_optimizer, epochs, steps_per_epoch, nth_epoch, save_models_fn=None):
     criterion = nn.BCELoss()
     history = []  # Used to store training history of each epoch
+    best_g_loss = float('inf')  # trace best loss
 
     for epoch in range(epochs):
         print(f"Epoch {epoch + 1}/{epochs}")
@@ -146,19 +147,24 @@ def train_ccgan(dataloader, generator, discriminator, generator_optimizer, discr
         
         while step < steps_per_epoch:
             try:
-                # Get data
-                boards, moves = next(dataloader_iter)  # Use next to manually get the next mini-batch
+                # get data
+                boards, moves = next(dataloader_iter)
             except StopIteration:
                 # If the dataloader ends, reset the iterator and continue
+                print('load new chess borad')
                 dataloader_iter = iter(dataloader)
                 boards, moves = next(dataloader_iter)
 
+            device = next(generator.parameters()).device
+            boards = boards.to(device)
+            moves = moves.to(device)
+
             # Create real and fake labels
-            real_labels = torch.ones(boards.size(0), 1)
-            fake_labels = torch.zeros(boards.size(0), 1)
+            real_labels = torch.ones(boards.size(0), 1).to(device)
+            fake_labels = torch.zeros(boards.size(0), 1).to(device)
 
             # Generate noise
-            noise = torch.randn(boards.size(0), 1)
+            noise = torch.randn(boards.size(0), 1).to(device)
 
             # Generate fake moves
             fake_moves = generator(boards, noise)
@@ -189,21 +195,25 @@ def train_ccgan(dataloader, generator, discriminator, generator_optimizer, discr
             # Record loss for each batch
             history.append((d_loss.item(), real_outputs.mean().item(), g_loss.item(), fake_moves.detach().cpu().numpy() if nth_epoch != 0 and (epoch % nth_epoch == 0 or epoch == epochs - 1) else None))
 
-            step += 1  # Increment step count
+            step += 1  
 
-        # Calculate average loss for each epoch
         current_epoch_history = history[epoch * steps_per_epoch:]
         d_loss_avg = sum(map(lambda x: x[0], current_epoch_history)) / steps_per_epoch
         d_acc_avg = sum(map(lambda x: x[1], current_epoch_history)) / steps_per_epoch
         g_loss_avg = sum(map(lambda x: x[2], current_epoch_history)) / steps_per_epoch
         print(f"\t[mean D loss: {d_loss_avg:.6f}, mean acc.: {100 * d_acc_avg:.2f}%%] [mean G loss: {g_loss_avg:.6f}]")
 
-        # Checkpoint - save model every nth_epoch
-        if save_models_fn is not None and ((epoch + 1) % nth_epoch == 0 or epoch == epochs - 1 or epoch == 0):
+        # save the best model
+        if g_loss_avg < best_g_loss:
+            best_g_loss = g_loss_avg
+            print(f"Saving best model at epoch {epoch + 1} with G loss: {best_g_loss:.6f}")
             save_models_fn(generator, discriminator, epoch + 1)
+
 
     print("End of final epoch")
     return history
+
+
 
 def get_saver(out_dir):
     ensure_dir_exists(out_dir)
