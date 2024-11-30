@@ -28,9 +28,8 @@ Generating game logs is handled by the script generate_logs.py. To change the nu
 
 Included is a script to parse games from a .pgn file and render each game therein to a series of svgs. That script is visualise_games_as_svg.py. Set the `input_path` variable to select the input .pgn file.
 
-### Debugging
-
-The script chessmovegan_instrumented.py uses training which includes time profiling for each step in a batch plus RAM usage each epoch. It has the additional dependancy (blah). In all other ways, it is identical to chessmovegan.py
+### Play game
+To run the game using AI_GAME.py to run the game
 
 ## Dependancies
 
